@@ -19,7 +19,12 @@ namespace Pureportal.BindingRedirectFixer
             bool autoMode = false;
             string solutionfolder = null;
 
-            if (args.Length == 2 && args[0] == "--automode")
+            if(args.Length > 0 && (args.Contains("--help") || args.Contains("-h")))
+            {
+                Console.WriteLine("You can user --automode + directory to change all app.config easy");
+                return;
+            }
+            else if (args.Length == 2 && args[0] == "--automode")
             {
                 autoMode = true;
                 solutionfolder = args[1];
