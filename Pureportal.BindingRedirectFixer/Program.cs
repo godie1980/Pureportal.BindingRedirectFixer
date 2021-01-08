@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -86,10 +87,15 @@ namespace Pureportal.BindingRedirectFixer
                 files.AddRange(Directory.GetFiles(directory, "web.config").ToList());
                 if(!files.Any())continue;
 
-                ConfigInfoLocation configInfoLocation = new ConfigInfoLocation()
+                List<ConfigInfoLocation> configInfoLocationsTmp = new List<ConfigInfoLocation>();
+
+                foreach (var file in files)
                 {
-                    PathToConfigFile = files.First()
-                };
+                    configInfoLocationsTmp.Add(new ConfigInfoLocation()
+                    {
+                        PathToConfigFile = file
+                    });
+                }
                 
                 //Try to load config
                 var projectFiles = Directory.GetFiles(directory, "*.csproj").ToList();
@@ -107,11 +113,11 @@ namespace Pureportal.BindingRedirectFixer
 
                     if (!string.IsNullOrEmpty(outPutPath) && outPutPath.Contains(":") && Directory.Exists(outPutPath))
                     {
-                        configInfoLocation.PathToBin = outPutPath;
+                        configInfoLocationsTmp.ForEach(t=>t.PathToBin = outPutPath);
                     }
                     else if (!string.IsNullOrEmpty(outPutPath) && Directory.Exists(directory + "\\" + outPutPath))
                     {
-                        configInfoLocation.PathToBin = directory + "\\" + outPutPath;
+                        configInfoLocationsTmp.ForEach(t=>t.PathToBin = directory + "\\" + outPutPath);
                     }
                     else
                     {
@@ -122,7 +128,7 @@ namespace Pureportal.BindingRedirectFixer
                 {
                     if (Directory.Exists(directory + "/bin/debug"))
                     {
-                        configInfoLocation.PathToBin = directory + "/bin/debug";
+                        configInfoLocationsTmp.ForEach(t=>t.PathToBin = directory + "/bin/debug");
                     }
                     else
                     {
@@ -130,7 +136,7 @@ namespace Pureportal.BindingRedirectFixer
                     }
                 }
                 
-                configInfoLocations.Add(configInfoLocation);
+                configInfoLocations.AddRange(configInfoLocationsTmp);
             }
 
             return configInfoLocations;
