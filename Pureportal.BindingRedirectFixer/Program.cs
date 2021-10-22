@@ -51,7 +51,8 @@ namespace Pureportal.BindingRedirectFixer
                 }
                 else
                 {
-                    var configInfoLocations = GetConfigInfoLocations(solutionfolder);
+                    List<ConfigInfoLocation> configInfoLocations = new List<ConfigInfoLocation>();
+                    GetDirectorysSolution(solutionfolder,configInfoLocations);
                     foreach (var configInfoLocation in configInfoLocations)
                     {
                         UpdateAppConfig(configInfoLocation.PathToConfigFile, configInfoLocation.PathToBin);
@@ -76,17 +77,18 @@ namespace Pureportal.BindingRedirectFixer
             }
         }
 
-        private static List<ConfigInfoLocation> GetConfigInfoLocations(string solutionDir)
+        private static void GetDirectorysSolution(string directory,List<ConfigInfoLocation> configInfoLocations)
         {
-            List<ConfigInfoLocation> configInfoLocations = new List<ConfigInfoLocation>();
-            //Get subdirs
-            string[] directorys = Directory.GetDirectories(solutionDir);
-            foreach (var directory in directorys)
+            string[] directorys = Directory.GetDirectories(directory);
+            foreach (var dir in directorys)
             {
-                var files = Directory.GetFiles(directory, "app.config").ToList();
-                files.AddRange(Directory.GetFiles(directory, "web.config").ToList());
+                if (dir == "bin" || dir == "obj" || dir == "publish") continue;
+                GetDirectorysSolution(dir, configInfoLocations);
+                
+                var files = Directory.GetFiles(dir, "app.config").ToList();
+                files.AddRange(Directory.GetFiles(dir, "web.config").ToList());
                 if(!files.Any())continue;
-
+                
                 List<ConfigInfoLocation> configInfoLocationsTmp = new List<ConfigInfoLocation>();
 
                 foreach (var file in files)
@@ -98,7 +100,7 @@ namespace Pureportal.BindingRedirectFixer
                 }
                 
                 //Try to load config
-                var projectFiles = Directory.GetFiles(directory, "*.csproj").ToList();
+                var projectFiles = Directory.GetFiles(dir, "*.csproj").ToList();
                 if (projectFiles.Any())
                 {
                     string outPutPath = null;
@@ -115,9 +117,9 @@ namespace Pureportal.BindingRedirectFixer
                     {
                         configInfoLocationsTmp.ForEach(t=>t.PathToBin = outPutPath);
                     }
-                    else if (!string.IsNullOrEmpty(outPutPath) && Directory.Exists(directory + "\\" + outPutPath))
+                    else if (!string.IsNullOrEmpty(outPutPath) && Directory.Exists(dir + "\\" + outPutPath))
                     {
-                        configInfoLocationsTmp.ForEach(t=>t.PathToBin = directory + "\\" + outPutPath);
+                        configInfoLocationsTmp.ForEach(t=>t.PathToBin = dir + "\\" + outPutPath);
                     }
                     else
                     {
@@ -128,7 +130,7 @@ namespace Pureportal.BindingRedirectFixer
                 {
                     if (Directory.Exists(directory + "/bin/debug"))
                     {
-                        configInfoLocationsTmp.ForEach(t=>t.PathToBin = directory + "/bin/debug");
+                        configInfoLocationsTmp.ForEach(t=>t.PathToBin = dir + "/bin/debug");
                     }
                     else
                     {
@@ -138,10 +140,8 @@ namespace Pureportal.BindingRedirectFixer
                 
                 configInfoLocations.AddRange(configInfoLocationsTmp);
             }
-
-            return configInfoLocations;
         }
-        
+
         private static void UpdateAppConfig(string config, string binFolder)
         {
             Console.WriteLine($"Patching file {config}");
