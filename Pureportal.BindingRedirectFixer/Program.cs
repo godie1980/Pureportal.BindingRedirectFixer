@@ -181,8 +181,20 @@ namespace Pureportal.BindingRedirectFixer
             string[] files = Directory.GetFiles(binFolder, "*.dll");
             foreach (var file in files)
             {
+                Assembly assembly = null;
                 Console.WriteLine($"Loading dll file {file}");
-                var assembly = Assembly.LoadFile(file);
+                try
+                {
+                    assembly = Assembly.LoadFile(file);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    continue;
+                }
+                
+                
+                
                 string assemblyVersion = assembly.GetName().Version.ToString();
                 string assemblyName = assembly.GetName().Name;
                 string publicKeyToken = GetPublicKeyTokenFromAssembly(assembly);
