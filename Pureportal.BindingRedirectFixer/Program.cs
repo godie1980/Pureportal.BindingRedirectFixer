@@ -18,14 +18,26 @@ namespace Pureportal.BindingRedirectFixer
             string binFolder = null;
             string config = null;
             bool autoMode = false;
+            bool nuspecMode = false;
             string solutionfolder = null;
 
             if(args.Length > 0 && (args.Contains("--help") || args.Contains("-h")))
             {
-                Console.WriteLine("You can user --automode + directory to change all app.config easy");
+                Console.WriteLine("You can user --nuspec + directory to change all app.config easy");
                 return;
             }
-            else if (args.Length == 2 && args[0] == "--automode")
+            
+            if (args.Length == 2 && args[0].ToLower() == "--nuspec")
+            {
+                nuspecMode = true;
+                solutionfolder = args[0];
+            }
+            else if (args.Length == 1)
+            {
+                autoMode = true;
+                solutionfolder = args[0];
+            }
+            else if (args.Length == 2 && args[0].ToLower() == "--automode")
             {
                 autoMode = true;
                 solutionfolder = args[1];
@@ -35,14 +47,20 @@ namespace Pureportal.BindingRedirectFixer
                 binFolder = args[0];
                 config = args[1];
             }
-            else
-            {
-                Console.WriteLine("Please give full path to bin folder");
-                binFolder = Console.ReadLine();
-                Console.WriteLine("Please give full path to web.config or app.config");
-                config = Console.ReadLine();
-            }
 
+            if(nuspecMode)
+            {
+                if (!Directory.Exists(solutionfolder))
+                {
+                    Console.WriteLine($"Directory {solutionfolder} does not exist");
+                }
+                else
+                {
+                    List<ConfigInfoLocation> configInfoLocations = new List<ConfigInfoLocation>();
+                    GetDirectorysSolution(solutionfolder,configInfoLocations);
+                    
+                }
+            }
             if (autoMode)
             {
                 if (!Directory.Exists(solutionfolder))
@@ -76,7 +94,7 @@ namespace Pureportal.BindingRedirectFixer
                 }
             }
         }
-
+        
         private static void GetDirectorysSolution(string directory,List<ConfigInfoLocation> configInfoLocations)
         {
             string[] directorys = Directory.GetDirectories(directory);
@@ -104,26 +122,33 @@ namespace Pureportal.BindingRedirectFixer
                 if (projectFiles.Any())
                 {
                     string outPutPath = null;
-                    XDocument xmldoc = XDocument.Parse(File.ReadAllText(projectFiles.First()));
-                    var ns = xmldoc.Root.Name.Namespace;
-                    //Open file with xml
-                    XElement debugElement = xmldoc.Descendants().Where(x=>x.HasAttributes && x.FirstAttribute.Name == "Condition" && x.FirstAttribute.Value.Contains("Debug")).FirstOrDefault();
-                    if (debugElement != null && debugElement.HasElements)
+                    try
                     {
-                        outPutPath = debugElement.Elements().Where(t => t.Name.LocalName == "OutputPath").FirstOrDefault()?.Value;
-                    }
+                        XDocument xmldoc = XDocument.Parse(File.ReadAllText(projectFiles.First()));
+                        var ns = xmldoc.Root.Name.Namespace;
+                        //Open file with xml
+                        XElement debugElement = xmldoc.Descendants().Where(x=>x.HasAttributes && x.FirstAttribute.Name == "Condition" && x.FirstAttribute.Value.Contains("Debug")).FirstOrDefault();
+                        if (debugElement != null && debugElement.HasElements)
+                        {
+                            outPutPath = debugElement.Elements().Where(t => t.Name.LocalName == "OutputPath").FirstOrDefault()?.Value;
+                        }
 
-                    if (!string.IsNullOrEmpty(outPutPath) && outPutPath.Contains(":") && Directory.Exists(outPutPath))
-                    {
-                        configInfoLocationsTmp.ForEach(t=>t.PathToBin = outPutPath);
+                        if (!string.IsNullOrEmpty(outPutPath) && outPutPath.Contains(":") && Directory.Exists(outPutPath))
+                        {
+                            configInfoLocationsTmp.ForEach(t=>t.PathToBin = outPutPath);
+                        }
+                        else if (!string.IsNullOrEmpty(outPutPath) && Directory.Exists(dir + "\\" + outPutPath))
+                        {
+                            configInfoLocationsTmp.ForEach(t=>t.PathToBin = dir + "\\" + outPutPath);
+                        }
+                        else
+                        {
+                            continue;
+                        }
                     }
-                    else if (!string.IsNullOrEmpty(outPutPath) && Directory.Exists(dir + "\\" + outPutPath))
+                    catch (Exception e)
                     {
-                        configInfoLocationsTmp.ForEach(t=>t.PathToBin = dir + "\\" + outPutPath);
-                    }
-                    else
-                    {
-                        continue;
+                        
                     }
                 }
                 else
@@ -144,6 +169,7 @@ namespace Pureportal.BindingRedirectFixer
 
         private static void UpdateAppConfig(string config, string binFolder)
         {
+            if (string.IsNullOrEmpty(binFolder)) return;
             Console.WriteLine($"Patching file {config}");
             XmlDataDocument xmldoc = new XmlDataDocument();
             //Open file with xml
